@@ -1,0 +1,8 @@
+{
+  "name": "Pati Zuma",
+  "description": "Kedi koruyucu ile renkli taşları eşleştirip yok ettiğin, özel kedi yetenekleri, bölüm sonu boss savaşları ve yüksek skor tablosu içeren Zuma tarzı arcade oyunu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
