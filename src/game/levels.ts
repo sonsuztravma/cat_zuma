@@ -1,18 +1,19 @@
-import { LevelConfig } from './types';
+import { BossVisualType, LevelConfig, TOTAL_LEVELS } from './types';
 
 export const ARENA_WIDTH = 1040;
 export const ARENA_HEIGHT = 640;
 
-export const CAMPAIGN_LEVELS: LevelConfig[] = [
+interface TrackBlueprint {
+  shooterPos: { x: number; y: number };
+  controlPoints: Array<{ x: number; y: number }>;
+  patrolCenter: { x: number; y: number };
+  patrolRadiusX: number;
+  patrolRadiusY: number;
+}
+
+const TRACK_BLUEPRINTS: TrackBlueprint[] = [
+  // 0: Klasik Spiral (Avlu)
   {
-    id: 1,
-    name: 'Yosunlu Avlu',
-    subtitle: 'Tapınağın giriş spirali · 4 Renk',
-    colorsCount: 4,
-    baseSpeed: 54,
-    spawnTarget: 36,
-    armorChance: 0,
-    energyOrbChance: 0.14,
     shooterPos: { x: 520, y: 330 },
     controlPoints: [
       { x: -30, y: 110 },
@@ -35,30 +36,12 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
       { x: 315, y: 445 },
       { x: 245, y: 330 },
     ],
-    boss: {
-      name: 'Kral Yün Canavarı',
-      title: 'Düğüm Bekçisi',
-      maxHp: 300,
-      visualType: 'yarn_golem',
-      attackInterval: 5.4,
-      minionInterval: 5.0,
-      minionCount: 5,
-      bonusScore: 1500,
-      patrolCenter: { x: 520, y: 135 },
-      patrolRadiusX: 250,
-      patrolRadiusY: 36,
-    },
-    unlockAbility: 'laser_paw',
+    patrolCenter: { x: 520, y: 135 },
+    patrolRadiusX: 250,
+    patrolRadiusY: 36,
   },
+  // 1: Kıvrımlı Kanyon (Alt Nişancı)
   {
-    id: 2,
-    name: 'Güneş Sütunları',
-    subtitle: 'Kıvrımlı kanyon yolu · 5 Renk',
-    colorsCount: 5,
-    baseSpeed: 64,
-    spawnTarget: 46,
-    armorChance: 0.05,
-    energyOrbChance: 0.14,
     shooterPos: { x: 520, y: 505 },
     controlPoints: [
       { x: -30, y: 115 },
@@ -77,30 +60,12 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
       { x: 830, y: 558 },
       { x: 705, y: 545 },
     ],
-    boss: {
-      name: 'Demir Tazı',
-      title: 'Bronz Muhafız',
-      maxHp: 420,
-      visualType: 'iron_hound',
-      attackInterval: 4.8,
-      minionInterval: 4.6,
-      minionCount: 6,
-      bonusScore: 2200,
-      patrolCenter: { x: 520, y: 175 },
-      patrolRadiusX: 290,
-      patrolRadiusY: 48,
-    },
-    unlockAbility: 'rainbow_yarn',
+    patrolCenter: { x: 520, y: 175 },
+    patrolRadiusX: 290,
+    patrolRadiusY: 48,
   },
+  // 2: İkiz Nehir (Kum Saati)
   {
-    id: 3,
-    name: 'İkiz Nehir',
-    subtitle: 'Çift döngülü kanal · 5 Renk · Zırhlı Taşlar',
-    colorsCount: 5,
-    baseSpeed: 74,
-    spawnTarget: 54,
-    armorChance: 0.1,
-    energyOrbChance: 0.13,
     shooterPos: { x: 520, y: 325 },
     controlPoints: [
       { x: 520, y: -30 },
@@ -126,29 +91,12 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
       { x: 275, y: 205 },
       { x: 410, y: 188 },
     ],
-    boss: {
-      name: 'Süpürge Ejderi',
-      title: 'Girdap Otomatı',
-      maxHp: 560,
-      visualType: 'vacuum_dragon',
-      attackInterval: 4.3,
-      minionInterval: 4.2,
-      minionCount: 6,
-      bonusScore: 3000,
-      patrolCenter: { x: 520, y: 135 },
-      patrolRadiusX: 270,
-      patrolRadiusY: 44,
-    },
+    patrolCenter: { x: 520, y: 135 },
+    patrolRadiusX: 270,
+    patrolRadiusY: 44,
   },
+  // 3: Altın Labirent (Üst Nişancı)
   {
-    id: 4,
-    name: 'Altın Labirent',
-    subtitle: 'Sıkı tapınak geçitleri · 6 Renk',
-    colorsCount: 6,
-    baseSpeed: 82,
-    spawnTarget: 62,
-    armorChance: 0.13,
-    energyOrbChance: 0.13,
     shooterPos: { x: 520, y: 255 },
     controlPoints: [
       { x: 1070, y: 105 },
@@ -172,29 +120,12 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
       { x: 380, y: 360 },
       { x: 555, y: 382 },
     ],
-    boss: {
-      name: 'Gölge Karga Lordu',
-      title: 'Gece Kanadı',
-      maxHp: 700,
-      visualType: 'shadow_raven',
-      attackInterval: 3.9,
-      minionInterval: 3.9,
-      minionCount: 7,
-      bonusScore: 4000,
-      patrolCenter: { x: 520, y: 465 },
-      patrolRadiusX: 280,
-      patrolRadiusY: 46,
-    },
+    patrolCenter: { x: 520, y: 465 },
+    patrolRadiusX: 280,
+    patrolRadiusY: 46,
   },
+  // 4: Kutsal Çift Spiral
   {
-    id: 5,
-    name: 'Bastet’in Tahtı',
-    subtitle: 'Büyük kutsal spiral · 6 Renk · Son Sınav',
-    colorsCount: 6,
-    baseSpeed: 92,
-    spawnTarget: 72,
-    armorChance: 0.16,
-    energyOrbChance: 0.14,
     shooterPos: { x: 520, y: 330 },
     controlPoints: [
       { x: -30, y: 560 },
@@ -221,46 +152,343 @@ export const CAMPAIGN_LEVELS: LevelConfig[] = [
       { x: 715, y: 392 },
       { x: 735, y: 270 },
     ],
-    boss: {
-      name: 'Antik Kum Sfenksi',
-      title: 'Tapınağın Hükümdarı',
-      maxHp: 900,
-      visualType: 'sand_sphinx',
-      attackInterval: 3.5,
-      minionInterval: 3.6,
-      minionCount: 7,
-      bonusScore: 6000,
-      patrolCenter: { x: 520, y: 132 },
-      patrolRadiusX: 295,
-      patrolRadiusY: 42,
-    },
+    patrolCenter: { x: 520, y: 132 },
+    patrolRadiusX: 295,
+    patrolRadiusY: 42,
+  },
+  // 5: Hilal Bahçesi (Sol Merkez Nişancı)
+  {
+    shooterPos: { x: 350, y: 330 },
+    controlPoints: [
+      { x: 1070, y: 120 },
+      { x: 860, y: 95 },
+      { x: 520, y: 85 },
+      { x: 210, y: 115 },
+      { x: 92, y: 250 },
+      { x: 95, y: 430 },
+      { x: 215, y: 548 },
+      { x: 520, y: 565 },
+      { x: 825, y: 535 },
+      { x: 940, y: 405 },
+      { x: 915, y: 235 },
+      { x: 750, y: 185 },
+      { x: 575, y: 235 },
+      { x: 645, y: 355 },
+      { x: 790, y: 395 },
+      { x: 700, y: 478 },
+      { x: 475, y: 468 },
+      { x: 455, y: 315 },
+    ],
+    patrolCenter: { x: 720, y: 320 },
+    patrolRadiusX: 165,
+    patrolRadiusY: 145,
+  },
+  // 6: Tapınak Dalgaları (Üst Merkez Nişancı)
+  {
+    shooterPos: { x: 520, y: 165 },
+    controlPoints: [
+      { x: -30, y: 540 },
+      { x: 145, y: 552 },
+      { x: 310, y: 455 },
+      { x: 495, y: 548 },
+      { x: 705, y: 545 },
+      { x: 895, y: 470 },
+      { x: 948, y: 310 },
+      { x: 830, y: 225 },
+      { x: 700, y: 345 },
+      { x: 520, y: 385 },
+      { x: 340, y: 345 },
+      { x: 210, y: 235 },
+      { x: 105, y: 320 },
+      { x: 165, y: 435 },
+      { x: 340, y: 410 },
+      { x: 520, y: 465 },
+      { x: 735, y: 455 },
+      { x: 835, y: 355 },
+    ],
+    patrolCenter: { x: 520, y: 470 },
+    patrolRadiusX: 290,
+    patrolRadiusY: 45,
+  },
+  // 7: Zümrüt Çember (Sağ Merkez Nişancı)
+  {
+    shooterPos: { x: 690, y: 330 },
+    controlPoints: [
+      { x: -30, y: 120 },
+      { x: 185, y: 92 },
+      { x: 520, y: 84 },
+      { x: 830, y: 112 },
+      { x: 948, y: 250 },
+      { x: 944, y: 430 },
+      { x: 825, y: 548 },
+      { x: 520, y: 565 },
+      { x: 215, y: 535 },
+      { x: 100, y: 405 },
+      { x: 125, y: 235 },
+      { x: 290, y: 185 },
+      { x: 465, y: 235 },
+      { x: 395, y: 355 },
+      { x: 250, y: 395 },
+      { x: 340, y: 478 },
+      { x: 565, y: 468 },
+      { x: 585, y: 315 },
+    ],
+    patrolCenter: { x: 320, y: 320 },
+    patrolRadiusX: 165,
+    patrolRadiusY: 145,
+  },
+  // 8: İkili Kavis (Merkez Nişancı)
+  {
+    shooterPos: { x: 520, y: 320 },
+    controlPoints: [
+      { x: 1070, y: 545 },
+      { x: 880, y: 558 },
+      { x: 520, y: 565 },
+      { x: 165, y: 545 },
+      { x: 85, y: 410 },
+      { x: 110, y: 190 },
+      { x: 260, y: 88 },
+      { x: 520, y: 82 },
+      { x: 780, y: 92 },
+      { x: 940, y: 195 },
+      { x: 925, y: 395 },
+      { x: 785, y: 478 },
+      { x: 520, y: 472 },
+      { x: 255, y: 468 },
+      { x: 185, y: 320 },
+      { x: 250, y: 178 },
+      { x: 520, y: 168 },
+      { x: 790, y: 182 },
+      { x: 830, y: 330 },
+      { x: 715, y: 412 },
+    ],
+    patrolCenter: { x: 520, y: 138 },
+    patrolRadiusX: 280,
+    patrolRadiusY: 38,
+  },
+  // 9: Kraliyet Yolu (Alt Orta Nişancı)
+  {
+    shooterPos: { x: 520, y: 490 },
+    controlPoints: [
+      { x: 1070, y: 110 },
+      { x: 855, y: 95 },
+      { x: 520, y: 88 },
+      { x: 185, y: 100 },
+      { x: 92, y: 185 },
+      { x: 185, y: 255 },
+      { x: 520, y: 248 },
+      { x: 855, y: 255 },
+      { x: 945, y: 330 },
+      { x: 835, y: 395 },
+      { x: 520, y: 385 },
+      { x: 185, y: 395 },
+      { x: 95, y: 485 },
+      { x: 215, y: 562 },
+      { x: 350, y: 545 },
+    ],
+    patrolCenter: { x: 520, y: 172 },
+    patrolRadiusX: 285,
+    patrolRadiusY: 46,
   },
 ];
 
-export function getLevelConfig(levelNumber: number): LevelConfig {
-  if (levelNumber <= CAMPAIGN_LEVELS.length) {
-    return CAMPAIGN_LEVELS[levelNumber - 1];
-  }
-  // Endless mode scaling past level 5
-  const cycleIdx = (levelNumber - 1) % CAMPAIGN_LEVELS.length;
-  const loopCount = Math.floor((levelNumber - 1) / CAMPAIGN_LEVELS.length);
-  const base = CAMPAIGN_LEVELS[cycleIdx];
-  return {
-    ...base,
-    id: levelNumber,
-    name: `${base.name} (Sonsuz ${levelNumber})`,
-    subtitle: `Artan hız · 6 Renk · Zırhlı Dalga`,
+export interface ChapterMeta {
+  index: number; // 1..10
+  startLevel: number;
+  endLevel: number;
+  name: string;
+  bossName: string;
+  bossTitle: string;
+  bossVisual: BossVisualType;
+  colorsCount: number;
+}
+
+export const CAMPAIGN_CHAPTERS: ChapterMeta[] = [
+  {
+    index: 1,
+    startLevel: 1,
+    endLevel: 10,
+    name: 'Yosunlu Avlu',
+    bossName: 'Kral Yün Canavarı',
+    bossTitle: 'Düğüm Bekçisi',
+    bossVisual: 'yarn_golem',
+    colorsCount: 4,
+  },
+  {
+    index: 2,
+    startLevel: 11,
+    endLevel: 20,
+    name: 'Güneş Sütunları',
+    bossName: 'Demir Tazı',
+    bossTitle: 'Bronz Muhafız',
+    bossVisual: 'iron_hound',
+    colorsCount: 5,
+  },
+  {
+    index: 3,
+    startLevel: 21,
+    endLevel: 30,
+    name: 'İkiz Nehir',
+    bossName: 'Süpürge Ejderi',
+    bossTitle: 'Girdap Otomatı',
+    bossVisual: 'vacuum_dragon',
+    colorsCount: 5,
+  },
+  {
+    index: 4,
+    startLevel: 31,
+    endLevel: 40,
+    name: 'Altın Labirent',
+    bossName: 'Gölge Karga Lordu',
+    bossTitle: 'Gece Kanadı',
+    bossVisual: 'shadow_raven',
+    colorsCount: 5,
+  },
+  {
+    index: 5,
+    startLevel: 41,
+    endLevel: 50,
+    name: 'Hilal Bahçesi',
+    bossName: 'Antik Kum Sfenksi',
+    bossTitle: 'Tapınağın Hükümdarı',
+    bossVisual: 'sand_sphinx',
     colorsCount: 6,
-    baseSpeed: Math.min(138, base.baseSpeed + loopCount * 16 + cycleIdx * 4),
-    spawnTarget: base.spawnTarget + loopCount * 14,
-    armorChance: Math.min(0.26, base.armorChance + loopCount * 0.05),
-    unlockAbility: undefined,
+  },
+  {
+    index: 6,
+    startLevel: 51,
+    endLevel: 60,
+    name: 'Zümrüt Geçit',
+    bossName: 'Kızıl Yumak Devi',
+    bossTitle: 'Örgü Efendisi',
+    bossVisual: 'yarn_golem',
+    colorsCount: 6,
+  },
+  {
+    index: 7,
+    startLevel: 61,
+    endLevel: 70,
+    name: 'Obsidyen Köprü',
+    bossName: 'Çelik Çene Tazı',
+    bossTitle: 'Karanlık Koruyucu',
+    bossVisual: 'iron_hound',
+    colorsCount: 6,
+  },
+  {
+    index: 8,
+    startLevel: 71,
+    endLevel: 80,
+    name: 'Fırtına Galerisi',
+    bossName: 'Kasırga Ejderi',
+    bossTitle: 'Rüzgar Yutucu',
+    bossVisual: 'vacuum_dragon',
+    colorsCount: 6,
+  },
+  {
+    index: 9,
+    startLevel: 81,
+    endLevel: 90,
+    name: 'Gece Kubbesi',
+    bossName: 'Ay Tutulması Kargası',
+    bossTitle: 'Karanlık Tüy',
+    bossVisual: 'shadow_raven',
+    colorsCount: 6,
+  },
+  {
+    index: 10,
+    startLevel: 91,
+    endLevel: 100,
+    name: 'Bastet’in Ebedi Tahtı',
+    bossName: 'Yüce Firavun Sfenksi',
+    bossTitle: '100. Bölüm Efsanesi',
+    bossVisual: 'sand_sphinx',
+    colorsCount: 6,
+  },
+];
+
+const ROMAN_SUB = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+function mirrorBlueprint(bp: TrackBlueprint): TrackBlueprint {
+  return {
+    shooterPos: { x: ARENA_WIDTH - bp.shooterPos.x, y: bp.shooterPos.y },
+    controlPoints: bp.controlPoints.map((p) => ({ x: ARENA_WIDTH - p.x, y: p.y })),
+    patrolCenter: { x: ARENA_WIDTH - bp.patrolCenter.x, y: bp.patrolCenter.y },
+    patrolRadiusX: bp.patrolRadiusX,
+    patrolRadiusY: bp.patrolRadiusY,
+  };
+}
+
+export function getLevelConfig(levelNumber: number): LevelConfig {
+  const clamped = Math.max(1, Math.min(TOTAL_LEVELS, levelNumber));
+  const chapterIdx = Math.floor((clamped - 1) / 10); // 0..9
+  const subStage = (clamped - 1) % 10; // 0..9
+  const chapter = CAMPAIGN_CHAPTERS[chapterIdx];
+  const isChapterFinale = subStage === 9;
+
+  // Pick one of 10 unique tracks and mirror on alternate chapters for 20 distinct layouts
+  const rawBlueprint = TRACK_BLUEPRINTS[(clamped - 1) % TRACK_BLUEPRINTS.length];
+  const blueprint = chapterIdx % 2 === 1 ? mirrorBlueprint(rawBlueprint) : rawBlueprint;
+
+  // Smooth progressive difficulty across 1..100 with standard Zuma-length sessions (>= 3 min shortest)
+  const t = (clamped - 1) / (TOTAL_LEVELS - 1); // 0..1
+  const colorsCount = clamped <= 8 ? 4 : clamped <= 32 ? 5 : 6;
+  const baseSpeed = Math.round(52 + Math.pow(t, 0.78) * 66 + (isChapterFinale ? 5 : 0));
+  const spawnTarget = Math.round(270 + t * 205 + (isChapterFinale ? 35 : 0));
+  const minChainSeconds = Math.round(172 + t * 68 + (isChapterFinale ? 18 : 0));
+  const waveCount = 3 + Math.min(2, Math.floor(t * 3));
+  const armorChance =
+    clamped < 3 ? 0 : Math.min(0.28, Number((0.03 + t * 0.24).toFixed(2)));
+  const energyOrbChance = Math.max(0.11, Number((0.15 - t * 0.03).toFixed(2)));
+
+  // Boss scaling across 1..100 (~25-60s+ thrilling two-phase boss battle)
+  const bossMaxHp = Math.round(
+    (1120 + clamped * 32 + Math.pow(clamped, 1.32) * 2.8) *
+      (isChapterFinale ? 1.25 : 1)
+  );
+  const attackInterval = Math.max(
+    2.2,
+    Number((5.2 - t * 2.6 - (isChapterFinale ? 0.25 : 0)).toFixed(2))
+  );
+  const minionInterval = Math.max(
+    2.7,
+    Number((4.9 - t * 1.9).toFixed(2))
+  );
+  const minionCount = Math.min(8, 5 + Math.floor(chapterIdx / 3));
+  const bonusScore = Math.round((1500 + clamped * 220) * (isChapterFinale ? 1.5 : 1));
+
+  const bossDisplayName = isChapterFinale
+    ? `Ulu ${chapter.bossName}`
+    : `${chapter.bossName} ${ROMAN_SUB[subStage]}`;
+
+  return {
+    id: clamped,
+    name: `${chapter.name} ${ROMAN_SUB[subStage]}`,
+    subtitle: `${colorsCount} Renk · Bölüm ${clamped}/${TOTAL_LEVELS}${
+      isChapterFinale ? ' · Bölge Finali' : ''
+    }`,
+    colorsCount,
+    baseSpeed,
+    spawnTarget,
+    minChainSeconds,
+    waveCount,
+    armorChance,
+    energyOrbChance,
+    shooterPos: blueprint.shooterPos,
+    controlPoints: blueprint.controlPoints,
+    unlockAbility:
+      clamped === 1 ? 'laser_paw' : clamped === 2 ? 'rainbow_yarn' : undefined,
     boss: {
-      ...base.boss,
-      maxHp: Math.round(base.boss.maxHp * (1 + loopCount * 0.45)),
-      attackInterval: Math.max(2.6, base.boss.attackInterval - loopCount * 0.35),
-      minionInterval: Math.max(2.9, base.boss.minionInterval - loopCount * 0.3),
-      bonusScore: base.boss.bonusScore + loopCount * 2000,
+      name: bossDisplayName,
+      title: isChapterFinale ? `${chapter.name} Hükümdarı` : chapter.bossTitle,
+      maxHp: bossMaxHp,
+      visualType: chapter.bossVisual,
+      attackInterval,
+      minionInterval,
+      minionCount,
+      bonusScore,
+      patrolCenter: blueprint.patrolCenter,
+      patrolRadiusX: blueprint.patrolRadiusX,
+      patrolRadiusY: blueprint.patrolRadiusY,
     },
   };
 }

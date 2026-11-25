@@ -1,5 +1,5 @@
 import { sound } from './audio';
-import { ARENA_HEIGHT, ARENA_WIDTH, CAMPAIGN_LEVELS, getLevelConfig } from './levels';
+import { ARENA_HEIGHT, ARENA_WIDTH, getLevelConfig } from './levels';
 import { renderGameCanvas } from './renderer';
 import { getBestScore } from './storage';
 import { SplineTrack } from './track';
@@ -12,6 +12,8 @@ import {
   BossProjectile,
   ChainBall,
   COLOR_ORDER,
+  DIFFICULTIES,
+  DifficultyId,
   FloatingText,
   HudSnapshot,
   LaserBeamEffect,
@@ -21,6 +23,7 @@ import {
   Particle,
   ShotBall,
   SpiritBolt,
+  TOTAL_LEVELS,
 } from './types';
 
 const BALL_RADIUS = 17.5;
@@ -58,8 +61,9 @@ export class PatiZumaEngine {
   private levelScore = 0;
   private highScore = 0;
   private levelNumber = 1;
+  private difficulty: DifficultyId = 'normal';
   private lives = 3;
-  private readonly maxLives = 3;
+  private maxLives = 3;
   private combo = 0;
   private maxCombo = 0;
   private bossesDefeated = 0;
@@ -72,6 +76,10 @@ export class PatiZumaEngine {
   private bossIntroTimer = 0;
   private poppedInLevel = 0;
   private spawnedInLevel = 0;
+  private levelElapsedSeconds = 0;
+  private chainElapsedSeconds = 0;
+  private currentWave = 1;
+  private bossEnraged = false;
   private introRolloutTimer = 0;
   private time = 0;
 
@@ -122,22 +130,26 @@ export class PatiZumaEngine {
     this.floorImage = img;
   }
 
-  public startNewGame(startLevel = 1): void {
+  public startNewGame(startLevel = 1, difficulty: DifficultyId = 'normal'): void {
+    this.difficulty = difficulty;
+    const diffCfg = DIFFICULTIES[difficulty];
     this.score = 0;
     this.highScore = getBestScore();
-    this.lives = this.maxLives;
+    this.maxLives = diffCfg.lives;
+    this.lives = diffCfg.lives;
     this.combo = 0;
     this.maxCombo = 0;
     this.bossesDefeated = 0;
     this.energy = 40;
     this.paused = false;
-    this.loadLevel(startLevel);
+    this.loadLevel(Math.max(1, Math.min(TOTAL_LEVELS, startLevel)));
     this.startLoop();
   }
 
   public loadNextLevel(): void {
     this.paused = false;
-    this.loadLevel(this.levelNumber + 1);
+    const next = Math.min(TOTAL_LEVELS, this.levelNumber + 1);
+    this.loadLevel(next);
     this.startLoop();
   }
 
@@ -163,11 +175,17 @@ export class PatiZumaEngine {
     return muted;
   }
 
-  public updatePointer(clientX: number, clientY: number): void {
+  public updatePointer(clientX: number, clientY: number, rotated90 = false): void {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    this.pointerX = ((clientX - rect.left) / rect.width) * ARENA_WIDTH;
-    this.pointerY = ((clientY - rect.top) / rect.height) * ARENA_HEIGHT;
+    if (rotated90) {
+      // Container is rotated 90deg clockwise: visual Y maps to logical X, inverted visual X maps to logical Y
+      this.pointerX = ((clientY - rect.top) / rect.height) * ARENA_WIDTH;
+      this.pointerY = (1 - (clientX - rect.left) / rect.width) * ARENA_HEIGHT;
+    } else {
+      this.pointerX = ((clientX - rect.left) / rect.width) * ARENA_WIDTH;
+      this.pointerY = ((clientY - rect.top) / rect.height) * ARENA_HEIGHT;
+    }
     this.aimAngle = Math.atan2(
       this.pointerY - this.levelConfig.shooterPos.y,
       this.pointerX - this.levelConfig.shooterPos.x
@@ -316,6 +334,10 @@ export class PatiZumaEngine {
     this.bossIntroTimer = 0;
     this.poppedInLevel = 0;
     this.spawnedInLevel = 0;
+    this.levelElapsedSeconds = 0;
+    this.chainElapsedSeconds = 0;
+    this.currentWave = 1;
+    this.bossEnraged = false;
     this.levelScore = 0;
     this.combo = 0;
     this.introRolloutTimer = 2.0;
@@ -424,8 +446,30 @@ export class PatiZumaEngine {
     }
   }
 
+  private getEffectiveTargetPops(): number {
+    return Math.round(
+      this.levelConfig.spawnTarget * DIFFICULTIES[this.difficulty].durationMult
+    );
+  }
+
+  private getEffectiveMinChainSeconds(): number {
+    return Math.round(
+      this.levelConfig.minChainSeconds * DIFFICULTIES[this.difficulty].durationMult
+    );
+  }
+
+  private getChainProgressRatio(): number {
+    const popRatio = Math.min(1, this.poppedInLevel / this.getEffectiveTargetPops());
+    const timeRatio = Math.min(
+      1,
+      this.chainElapsedSeconds / this.getEffectiveMinChainSeconds()
+    );
+    return Math.min(popRatio, timeRatio);
+  }
+
   private update(dt: number): void {
     this.time += dt;
+    this.levelElapsedSeconds += dt;
     this.catRecoil = Math.max(0, this.catRecoil - dt * 5.5);
     this.shootCooldown = Math.max(0, this.shootCooldown - dt);
     this.catStunTimer = Math.max(0, this.catStunTimer - dt);
@@ -453,6 +497,10 @@ export class PatiZumaEngine {
       return;
     }
 
+    if (this.phase === 'CHAIN') {
+      this.chainElapsedSeconds += dt;
+    }
+
     this.updateChain(dt);
     this.updateShots(dt);
     if (this.phase === 'BOSS' && this.boss) {
@@ -464,9 +512,36 @@ export class PatiZumaEngine {
     this.updateFloatingTexts(dt);
     this.updateLaserBeams(dt);
 
-    // Check transition to Boss Battle in CHAIN phase
-    if (this.phase === 'CHAIN' && this.poppedInLevel >= this.levelConfig.spawnTarget) {
-      this.beginBossPhase();
+    // Track wave progression & transition to Boss Battle in CHAIN phase
+    if (this.phase === 'CHAIN') {
+      const progressRatio = this.getChainProgressRatio();
+      const totalWaves = this.levelConfig.waveCount;
+      const computedWave = Math.min(
+        totalWaves,
+        1 + Math.floor(progressRatio * totalWaves)
+      );
+
+      if (computedWave > this.currentWave) {
+        this.currentWave = computedWave;
+        this.addScore(150);
+        this.addEnergy(12);
+        sound.playMatch(2);
+        const isFinalWave = computedWave === totalWaves;
+        this.spawnFloatingText(
+          ARENA_WIDTH / 2,
+          122,
+          isFinalWave
+            ? `SON DALGA! (${computedWave}/${totalWaves})`
+            : `DALGA ${computedWave}/${totalWaves}!`,
+          isFinalWave ? '#fbbf24' : '#6ee7b7',
+          1.35
+        );
+        this.emitHud(true);
+      }
+
+      if (progressRatio >= 1) {
+        this.beginBossPhase();
+      }
     }
 
     // Periodic HUD snapshot sync (~15Hz)
@@ -478,8 +553,8 @@ export class PatiZumaEngine {
   }
 
   private updateChain(dt: number): void {
-    // 1. Spawn new balls at entrance during CHAIN phase
-    if (this.phase === 'CHAIN' && this.poppedInLevel < this.levelConfig.spawnTarget) {
+    // 1. Spawn new balls continuously at entrance during CHAIN phase
+    if (this.phase === 'CHAIN') {
       const tailDist = this.chain.length > 0 ? this.chain[0].dist : BALL_DIAMETER * 2;
       if (tailDist >= 0) {
         const lastColor = this.chain.length > 0 ? this.chain[0].color : this.pickRandomLevelColor();
@@ -505,10 +580,15 @@ export class PatiZumaEngine {
 
     if (this.chain.length === 0) return;
 
-    // 2. Calculate base conveyor speed
-    let speed = this.levelConfig.baseSpeed;
+    // 2. Calculate base conveyor speed with wave ramp & anti-empty wave surge
+    const diffCfg = DIFFICULTIES[this.difficulty];
+    const waveSpeedRamp = 1 + (this.currentWave - 1) * 0.045;
+    let speed = this.levelConfig.baseSpeed * diffCfg.speedMult * waveSpeedRamp;
     if (this.introRolloutTimer > 0) {
       speed *= 2.8;
+    } else if (this.phase === 'CHAIN' && this.chain.length < 10 && this.freezeTimer <= 0) {
+      // Brisk wave surge whenever the track gets cleared down so action never stalls
+      speed *= 2.4;
     } else if (this.phase === 'BOSS') {
       speed *= 0.88; // Slight pacing balance while fighting boss
     }
@@ -872,7 +952,7 @@ export class PatiZumaEngine {
           vx: Math.cos(angle) * 240,
           vy: Math.sin(angle) * 240,
           color: leadColor,
-          damage: 28 + comboMult * 10,
+          damage: 20 + comboMult * 6,
           trail: [],
         });
       }
@@ -916,7 +996,7 @@ export class PatiZumaEngine {
     // Also blast Boss if inside extended radius
     if (this.boss && this.phase === 'BOSS') {
       if (Math.hypot(this.boss.x - x, this.boss.y - y) <= blastRadius + this.boss.radius) {
-        this.damageBoss(92, true, 'BOMBA! -92');
+        this.damageBoss(68, true, 'BOMBA! -68');
       }
     }
   }
@@ -975,7 +1055,7 @@ export class PatiZumaEngine {
     // Hit Boss along laser
     if (this.boss && this.phase === 'BOSS') {
       if (rayDist(this.boss.x, this.boss.y) <= this.boss.radius + 20) {
-        this.damageBoss(115, true, 'LAZER! -115');
+        this.damageBoss(80, true, 'LAZER! -80');
       }
     }
   }
@@ -983,6 +1063,7 @@ export class PatiZumaEngine {
   private beginBossPhase(): void {
     this.phase = 'BOSS_INTRO';
     this.bossIntroTimer = 0;
+    this.bossEnraged = false;
     sound.playBossWarning();
     this.triggerShake(0.4, 6);
 
@@ -1002,16 +1083,23 @@ export class PatiZumaEngine {
     this.shots = [];
 
     const bCfg = this.levelConfig.boss;
+    const diffCfg = DIFFICULTIES[this.difficulty];
+    const scaledMaxHp = Math.round(bCfg.maxHp * diffCfg.bossHpMult);
+    const scaledAttackInterval = Math.max(1.75, bCfg.attackInterval * diffCfg.attackIntervalMult);
     this.boss = {
-      config: bCfg,
+      config: {
+        ...bCfg,
+        maxHp: scaledMaxHp,
+        attackInterval: scaledAttackInterval,
+      },
       x: bCfg.patrolCenter.x,
       y: bCfg.patrolCenter.y,
       radius: 46,
-      hp: bCfg.maxHp,
-      maxHp: bCfg.maxHp,
+      hp: scaledMaxHp,
+      maxHp: scaledMaxHp,
       weaknessColor: this.pickRandomLevelColor(),
       weaknessTimer: 6.5,
-      attackTimer: bCfg.attackInterval * 0.75,
+      attackTimer: scaledAttackInterval * 0.75,
       minionTimer: bCfg.minionInterval,
       patrolTime: 0,
       hitFlash: 0,
@@ -1060,8 +1148,9 @@ export class PatiZumaEngine {
       return;
     }
 
-    // Smooth figure-8 patrol motion
-    boss.patrolTime += dt * 0.82 * slowMult;
+    // Smooth figure-8 patrol motion (faster when enraged)
+    const enrageMult = this.bossEnraged ? 1.18 : 1;
+    boss.patrolTime += dt * 0.82 * slowMult * enrageMult;
     boss.x =
       boss.config.patrolCenter.x +
       Math.sin(boss.patrolTime) * boss.config.patrolRadiusX;
@@ -1072,7 +1161,7 @@ export class PatiZumaEngine {
     // Rotate weakness color periodically
     boss.weaknessTimer -= dt;
     if (boss.weaknessTimer <= 0) {
-      boss.weaknessTimer = 6.8;
+      boss.weaknessTimer = this.bossEnraged ? 5.4 : 6.8;
       const allowed = this.getAllowedColors().filter((c) => c !== boss.weaknessColor);
       boss.weaknessColor = allowed[Math.floor(Math.random() * allowed.length)] ?? 'ruby';
       this.spawnFloatingText(
@@ -1106,7 +1195,7 @@ export class PatiZumaEngine {
       boss.chargeAnim = 0;
       const sp = this.levelConfig.shooterPos;
       const a = Math.atan2(sp.y - boss.y, sp.x - boss.x);
-      const speed = 175 + this.levelNumber * 12;
+      const speed = Math.min(340, (175 + Math.min(this.levelNumber, 40) * 3.2) * DIFFICULTIES[this.difficulty].speedMult);
       this.bossProjectiles.push({
         id: this.nextId++,
         x: boss.x,
@@ -1131,12 +1220,12 @@ export class PatiZumaEngine {
     if (shot.kind === 'rainbow') {
       sound.playAbility('rainbow_yarn');
       this.boss.stunTimer = 3.2;
-      this.damageBoss(75, true, 'SERSEMLETME! -75');
+      this.damageBoss(55, true, 'SERSEMLETME! -55');
       return;
     }
 
     const isCrit = shot.color === this.boss.weaknessColor;
-    const dmg = isCrit ? 48 : 20;
+    const dmg = isCrit ? 28 : 12;
     this.damageBoss(dmg, isCrit, isCrit ? `KRİTİK! -${dmg}` : `-${dmg}`);
   }
 
@@ -1165,6 +1254,36 @@ export class PatiZumaEngine {
       isCrit ? '#fde047' : '#e2e8f0',
       isCrit ? 1.2 : 0.95
     );
+
+    // Phase 2 Enrage transition at 50% HP
+    if (!this.bossEnraged && this.boss.hp > 0 && this.boss.hp <= this.boss.maxHp * 0.5) {
+      this.bossEnraged = true;
+      sound.playBossWarning();
+      this.triggerShake(0.35, 8);
+      this.particles.push({
+        x: this.boss.x,
+        y: this.boss.y,
+        vx: 0,
+        vy: 0,
+        radius: 34,
+        color: '#f43f5e',
+        alpha: 0.95,
+        life: 0.5,
+        maxLife: 0.5,
+        ring: true,
+      });
+      this.spawnFloatingText(
+        this.boss.x,
+        this.boss.y - this.boss.radius - 42,
+        'BOSS ÖFKELENDİ!',
+        '#fb7185',
+        1.4
+      );
+      if (this.chain.length < 18) {
+        this.spawnBossMinionWave(Math.min(5, this.boss.config.minionCount));
+      }
+      this.boss.attackTimer = Math.min(this.boss.attackTimer, 1.4);
+    }
 
     if (this.boss.hp <= 0) {
       this.handleBossDefeated();
@@ -1202,12 +1321,13 @@ export class PatiZumaEngine {
       levelId: this.levelNumber,
       levelName: this.levelConfig.name,
       bossName: defeatedBoss.config.name,
-      bossBonus: defeatedBoss.config.bonusScore,
+      bossBonus: Math.round(defeatedBoss.config.bonusScore * DIFFICULTIES[this.difficulty].scoreMult),
       levelScore: this.levelScore,
       totalScore: this.score,
       maxCombo: this.maxCombo,
+      durationSeconds: Math.round(this.levelElapsedSeconds),
       unlockedAbility: this.levelConfig.unlockAbility,
-      isFinalCampaignLevel: this.levelNumber === CAMPAIGN_LEVELS.length,
+      isFinalCampaignLevel: this.levelNumber >= TOTAL_LEVELS,
     });
   }
 
@@ -1383,15 +1503,17 @@ export class PatiZumaEngine {
   }
 
   private addScore(points: number): void {
-    this.score += points;
-    this.levelScore += points;
+    const scaled = Math.round(points * DIFFICULTIES[this.difficulty].scoreMult);
+    this.score += scaled;
+    this.levelScore += scaled;
     if (this.score > this.highScore) {
       this.highScore = this.score;
     }
   }
 
   private addEnergy(amount: number): void {
-    this.energy = Math.min(100, this.energy + amount);
+    const scaled = amount * DIFFICULTIES[this.difficulty].energyMult;
+    this.energy = Math.min(100, this.energy + scaled);
   }
 
   private triggerShake(duration: number, intensity: number): void {
@@ -1453,6 +1575,17 @@ export class PatiZumaEngine {
   }
 
   private render(): void {
+    if (this.canvas.width <= 0 || this.canvas.height <= 0) return;
+    // Dynamically adapt logical arena coordinates to current canvas backing-store resolution
+    this.ctx.setTransform(
+      this.canvas.width / ARENA_WIDTH,
+      0,
+      0,
+      this.canvas.height / ARENA_HEIGHT,
+      0,
+      0
+    );
+
     const shakeX =
       this.shakeTimer > 0 ? (Math.random() - 0.5) * 2 * this.shakeIntensity : 0;
     const shakeY =
@@ -1491,17 +1624,22 @@ export class PatiZumaEngine {
     if (!force && !this.running) return;
     const progress =
       this.phase === 'CHAIN'
-        ? Math.min(100, Math.round((this.poppedInLevel / this.levelConfig.spawnTarget) * 100))
+        ? Math.min(100, Math.round(this.getChainProgressRatio() * 100))
         : 100;
 
     this.callbacks.onHudUpdate({
       score: this.score,
       highScore: this.highScore,
       level: this.levelNumber,
+      totalLevels: TOTAL_LEVELS,
+      difficulty: this.difficulty,
       levelName: this.levelConfig.name,
       levelSubtitle: this.levelConfig.subtitle,
       phase: this.phase,
       progress,
+      currentWave: this.currentWave,
+      totalWaves: this.levelConfig.waveCount,
+      elapsedSeconds: Math.floor(this.levelElapsedSeconds),
       energy: Math.round(this.energy),
       combo: this.combo,
       maxCombo: this.maxCombo,

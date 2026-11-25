@@ -185,6 +185,8 @@ export interface LevelConfig {
   colorsCount: number;
   baseSpeed: number;
   spawnTarget: number;
+  minChainSeconds: number;
+  waveCount: number;
   armorChance: number;
   energyOrbChance: number;
   shooterPos: { x: number; y: number };
@@ -289,6 +291,64 @@ export interface LaserBeamEffect {
   maxLife: number;
 }
 
+export type DifficultyId = 'easy' | 'normal' | 'hard';
+
+export interface DifficultyConfig {
+  id: DifficultyId;
+  label: string;
+  summary: string;
+  lives: number;
+  speedMult: number;
+  bossHpMult: number;
+  attackIntervalMult: number;
+  durationMult: number;
+  scoreMult: number;
+  energyMult: number;
+}
+
+export const DIFFICULTIES: Record<DifficultyId, DifficultyConfig> = {
+  easy: {
+    id: 'easy',
+    label: 'Kolay',
+    summary: '5 Can · Yavaş zincir · ~3+ dk bölüm',
+    lives: 5,
+    speedMult: 0.78,
+    bossHpMult: 0.8,
+    attackIntervalMult: 1.28,
+    durationMult: 1.0,
+    scoreMult: 0.85,
+    energyMult: 1.2,
+  },
+  normal: {
+    id: 'normal',
+    label: 'Normal',
+    summary: '3 Can · Dengeli hız · ~4+ dk bölüm',
+    lives: 3,
+    speedMult: 1.0,
+    bossHpMult: 1.0,
+    attackIntervalMult: 1.0,
+    durationMult: 1.22,
+    scoreMult: 1.0,
+    energyMult: 1.0,
+  },
+  hard: {
+    id: 'hard',
+    label: 'Zor',
+    summary: '2 Can · Hızlı · ~5+ dk · +%40 Skor',
+    lives: 2,
+    speedMult: 1.24,
+    bossHpMult: 1.35,
+    attackIntervalMult: 0.8,
+    durationMult: 1.48,
+    scoreMult: 1.4,
+    energyMult: 0.92,
+  },
+};
+
+export const DIFFICULTY_ORDER: DifficultyId[] = ['easy', 'normal', 'hard'];
+
+export const TOTAL_LEVELS = 100;
+
 export interface HighScoreEntry {
   id: string;
   playerName: string;
@@ -296,6 +356,7 @@ export interface HighScoreEntry {
   levelReached: number;
   maxCombo: number;
   bossesDefeated: number;
+  difficulty?: DifficultyId;
   date: string;
 }
 
@@ -307,6 +368,7 @@ export interface LevelClearSummary {
   levelScore: number;
   totalScore: number;
   maxCombo: number;
+  durationSeconds: number;
   unlockedAbility?: AbilityId;
   isFinalCampaignLevel: boolean;
 }
@@ -315,10 +377,15 @@ export interface HudSnapshot {
   score: number;
   highScore: number;
   level: number;
+  totalLevels: number;
+  difficulty: DifficultyId;
   levelName: string;
   levelSubtitle: string;
   phase: LevelPhase;
   progress: number; // 0-100
+  currentWave: number;
+  totalWaves: number;
+  elapsedSeconds: number;
   energy: number; // 0-100
   combo: number;
   maxCombo: number;

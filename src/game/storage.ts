@@ -1,6 +1,7 @@
-import { HighScoreEntry } from './types';
+import { HighScoreEntry, TOTAL_LEVELS } from './types';
 
 const STORAGE_KEY = 'pati_zuma_highscores_v1';
+const UNLOCK_KEY = 'pati_zuma_max_level_v1';
 const MAX_ENTRIES = 10;
 
 export function loadHighScores(): HighScoreEntry[] {
@@ -39,6 +40,7 @@ export function saveHighScore(entry: Omit<HighScoreEntry, 'id' | 'date'>): HighS
     levelReached: entry.levelReached,
     maxCombo: entry.maxCombo,
     bossesDefeated: entry.bossesDefeated,
+    difficulty: entry.difficulty ?? 'normal',
     date: new Date().toLocaleDateString('tr-TR', {
       day: '2-digit',
       month: 'short',
@@ -65,4 +67,27 @@ export function clearHighScores(): void {
   } catch {
     // Ignore storage errors
   }
+}
+
+export function loadMaxUnlockedLevel(): number {
+  if (typeof window === 'undefined') return 1;
+  try {
+    const raw = window.localStorage.getItem(UNLOCK_KEY);
+    const parsed = raw ? parseInt(raw, 10) : 1;
+    if (Number.isNaN(parsed)) return 1;
+    return Math.max(1, Math.min(TOTAL_LEVELS, parsed));
+  } catch {
+    return 1;
+  }
+}
+
+export function saveMaxUnlockedLevel(level: number): number {
+  const current = loadMaxUnlockedLevel();
+  const next = Math.max(current, Math.min(TOTAL_LEVELS, level));
+  try {
+    window.localStorage.setItem(UNLOCK_KEY, String(next));
+  } catch {
+    // Ignore storage errors
+  }
+  return next;
 }
